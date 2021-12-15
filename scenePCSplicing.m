@@ -35,15 +35,19 @@ for n = 1:numPCFile-1
     xyzNextScene = getPointCloud(filePaths{n+1});
 
     % PPF + ICP (Match the current scene to the next scene) @待办事项
-    [xyzNowSceneRegisted,rmse] = registePCD(xyzNowScene,xyzNextScene);
+    [xyzNowSceneRegisted,rmse,isRegsiteErr] = registePCD(xyzNowScene,xyzNextScene);
     
     % compute the splicing accuracy and evaluate the splicing quality @待办事项
     [accuracy,isQualified]=computeAccuracy(xyzNowSceneRegisted,xyzNextScene);
     accuracyLog(n,:) = [accuracy,double(isQualified)];
     
     % Merge point cloud (Delete coincident point clouds)
-    if isQualified
+    if ~isRegsiteErr && isQualified 
         xyzNowScene = mergePointCloud(xyzNextScene,xyzNowSceneRegisted);
+    elseif isRegsiteErr
+        disp(['Registration failed, discard the -No',num2str(n),'- scene']);
+    else
+        disp(['Registration quality is not up to standard, discard the No',num2str(n),'scene']);
     end
 end
 
