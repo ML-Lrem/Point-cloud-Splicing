@@ -1,10 +1,9 @@
 function [xyzMovingRegisted,rmse,isRegsiteErr] = registePCD(xyzMoving,xyzFixed) 
-%-------------------------------Seting-------------------------------------
-% 参数设置,@ Todo 数据类型可优化
+% Parameter setting
 % parameter in PPF
 % Minimum sample grid size
 girdStepPPF = 1;
-% Large rmse 表征当Rmse大于该值时，ICP无力处理，需要PPF  %3
+% Large rmse When RMSE is greater than this value，ICP treatment
 bigRmse = 3;
 
 % parameter in icp
@@ -12,17 +11,18 @@ bigRmse = 3;
 girdStepICP = 1; 
 % Maximum number of iterations
 maxIterations = 50;
-%  Percentage of inliers 按距离排序取固定比例的点对，以去除较远的点对;
+% Percentage of inliers 
+% Take fixed proportion of point pairs according to distance to remove distant point pairs;
 inlierRatioMinMax = [0.05,0.5];
 inlierRatioStep = 0.05;
 % Maximum acceptable error
 acceptableMaxRmse = 0.15;
 
-% icp+ppf loop times
-% 最大参数调整次数
-numAdjustMax = 5;
-% 最大PPF执行次数
-numInPPFMax = 5;
+% loop times
+% Maximum adjustment times
+numAdjustMax = 2;
+% Maximum PPF execution times
+numInPPFMax = 3;
 
 
 
@@ -51,15 +51,18 @@ while ~isRmseLimit
     end
     
     % Registration status flag
-    % 匹配错误:1.PPF执行次数过多；2.参数调整次数过多；2.ICP匹配时出现rmse”不减反增的情况"
+    % Registration error:
+        % 1. Too many PPF executions
+        % 2. Too many parameter adjustments
+        % 3. During ICP matching, "RMSE" does not decrease but increases;
     isRegsiteErr = (numInPPF >= numInPPFMax) || (numAdjust >= numAdjustMax) || (rmse > rmseLast && ~isBigRmse);  
-    % 允许通过动态调整参数，进行错误修正
+    % Error correction is allowed by dynamically adjusting parameters
     isNotGoodInlierRatioMax = (isRegsiteErr && ~isBigRmse);
     isMinInlierRatio = round(inlierRatio*100) == round(inlierRatioMinMax(1)*100);
     isEndRegsite = (rmse <= acceptableMaxRmse || abs(rmseLast-rmse)<0.01);
 
     if isNotGoodInlierRatioMax
-        disp('匹配错误,调整inlierRatinMax,并重启icp');
+        disp('Registration error: Adjust inlierRatinMax and retry icp');
         rmseLast = nan;
         numInPPF = 0;
         numAdjust = numAdjust+1;

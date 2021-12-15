@@ -34,10 +34,10 @@ for n = 1:numPCFile-1
     end
     xyzNextScene = getPointCloud(filePaths{n+1});
 
-    % PPF + ICP (Match the current scene to the next scene) @待办事项
+    % PPF + ICP (Match the current scene to the next scene)
     [xyzNowSceneRegisted,rmse,isRegsiteErr] = registePCD(xyzNowScene,xyzNextScene);
     
-    % compute the splicing accuracy and evaluate the splicing quality @待办事项
+    % compute the splicing accuracy and evaluate the splicing quality @Todo
     [accuracy,isQualified]=computeAccuracy(xyzNowSceneRegisted,xyzNextScene);
     accuracyLog(n,:) = [accuracy,double(isQualified)];
     
@@ -45,9 +45,9 @@ for n = 1:numPCFile-1
     if ~isRegsiteErr && isQualified 
         xyzNowScene = mergePointCloud(xyzNextScene,xyzNowSceneRegisted);
     elseif isRegsiteErr
-        disp(['Registration failed, discard the -No',num2str(n),'- scene']);
+        disp(['Registration failed, discard the -No',num2str(n+1),'- scene']);
     else
-        disp(['Registration quality is not up to standard, discard the No',num2str(n),'scene']);
+        disp(['Registration quality is not up to standard, discard the No',num2str(n+1),'scene']);
     end
 end
 
@@ -56,5 +56,5 @@ end
 xyzOut = xyzNowScene;
 save 'outXYZ.txt' -ascii xyzOut;
 disp('Save done')
-disp(['accuracy:',num2str(rmse)])
+disp(['accuracy:',num2str(accuracy)])
 toc;
