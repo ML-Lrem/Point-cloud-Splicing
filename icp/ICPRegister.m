@@ -1,27 +1,14 @@
-function [pcdMovingRegisted,rmse] = ICPRegister(pcdMoving,pcdFixed,gridStep,maxIterations)
+function [pcdMovingRegisted,rmse] = ICPRegister(pcdMoving,pcdFixed,gridStep,maxIterations,inlierRatio)
 
-rmseLast = 0;
-isRmseLimit = false;
 % sample
 pcdMovingSample = pcdownsample(pcdMoving,'gridAverage',gridStep);
 pcdFixedSample = pcdownsample(pcdFixed,'gridAverage',gridStep);
 
-while ~isRmseLimit
-    % Apply the rigid registration
-    [tform,~,rmse] = pcregistericp(pcdMovingSample, pcdFixedSample, 'Extrapolate', true,'MaxIterations',maxIterations);
-    
-    % transform
-    pcdMovingSample = pctransform(pcdMovingSample, tform);
-   
-    % loop ICP    
-    if abs(rmse-rmseLast)<0.01
-        isRmseLimit = true;
-    else
-        rmseLast = rmse;
-    end
-end
+% Apply the rigid registration
+[tform,~,rmse] = pcregistericp(pcdMovingSample, pcdFixedSample, 'Extrapolate', true,'MaxIterations',maxIterations,'InlierRatio',inlierRatio);
 
-pcdMovingRegisted = pcdMoving;
+% transform
+pcdMovingRegisted = pctransform(pcdMoving, tform);
 
 end
 

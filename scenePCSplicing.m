@@ -48,6 +48,7 @@ for n = 1:numPCFile-1
 end
 
 % save pcdSpliced
+% xyzOut = double(xyzNowScene);
 xyzOut = xyzNowScene;
 save 'outXYZ.txt' -ascii xyzOut;
 disp('Save done')

@@ -117,7 +117,7 @@ classdef PPF3DDetector < handle
                 
                 if mod(i,10)==0
                     
-                    % disp( ['trained: ', num2str(round(100*i/obj.refPointNum)), ' %'] )
+%                     disp( ['trained: ', num2str(round(100*i/obj.refPointNum)), ' %'] )
                 end
                 
                 
@@ -196,7 +196,7 @@ classdef PPF3DDetector < handle
             %disp(num2str(perm(1:floor(sceneSize/sceneStep))))
             %for i=perm(1:floor(sceneSize/sceneStep))
                
-                %disp(['Matching:' num2str(i) ' of '  num2str(sceneSize) ])                          
+%                 disp(['Matching:' num2str(i) ' of '  num2str(sceneSize) ])                          
                 
                 p1=sampledScene(i,:);
                 
@@ -308,7 +308,7 @@ classdef PPF3DDetector < handle
                 
                 
                 %for each peak in accumulator
-                for peak=1:length(accuMaxInd);
+                for peak=1:length(accuMaxInd)
                    
                     %if peak exist
                     if accuMaxInd(peak)

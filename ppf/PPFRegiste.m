@@ -1,5 +1,9 @@
 function pcdMovingRegisted = PPFRegiste(pcdMoving,pcdFixed,girdStep)
 
+% % single to double
+% pcdMoving = pointCloud(double(pcdMoving.Location));
+% pcdFixed= pointCloud(double(pcdFixed.Location));
+
 % PPF input pcd, output pcd
 % Sample
 pcdMovingSampled = pcdownsample(pcdMoving,'gridAverage',girdStep);
@@ -17,8 +21,8 @@ dt = dt.trainModel(meshMovingSampled);
 % Adjust the pose of the model
 xyzMovingPPF = TransformPose(pcdMoving.Location,result{1}.pose);
 
-disp('PPFing')
 % xyz2pcd
+% pcdMovingRegisted = pointCloud(single(xyzMovingPPF));
 pcdMovingRegisted = pointCloud(xyzMovingPPF);
 
 end
