@@ -7,23 +7,22 @@ girdStepPPF = 1;
 bigRmse = 3;
 
 % parameter in icp
-% Minimum sample grid size
+% Minimum sample grid size 需要动态调整 ToDo
 girdStepICP = 1; 
 % Maximum number of iterations
-maxIterations = 50;
-% Percentage of inliers 
+maxIterations = 100;
+% Percentage of inliers
 % Take fixed proportion of point pairs according to distance to remove distant point pairs;
-inlierRatioMinMax = [0.05,0.5];
-inlierRatioStep = 0.05;
-% Maximum acceptable error
-acceptableMaxRmse = 0.15;
+% 根据距离取固定比例的点对
+inlierRatioMax = 1;
+% 递减步长决定了匹配成功或失败的评价参考线
+inlierRatioStep = 0.1;
 
 % loop times
-% Maximum adjustment times
-numAdjustMax = 2;
 % Maximum PPF execution times
-numInPPFMax = 3;
-
+numAdjusteInlierRatioMax = 3;
+% Maximum acceptable error
+acceptableMaxRmse = 0.2;
 
 
 % xyz2pcd
@@ -31,55 +30,81 @@ pcdMoving = pointCloud(xyzMoving);
 pcdFixed = pointCloud(xyzFixed);
 pcdTemp = pcdMoving;
 
-rmseLast = nan;
+% 根据两个点云特性计算大致的girdStepICP 估计
+% girdStepICP = girdStepICP - Step;
+% estimateGirdStepICP(xyzMoving,xyzFixed,girdStepICP);
+
+inlierRatio = inlierRatioMax;
+numAdjusteInlierRatio = 0;
+rmseLog = [];
 isRmseLimit = false;
-inlierRatio = inlierRatioMinMax(2);
-numAdjust = 0;
-numInPPF = 0;
+isFirst = true;
+isMinInlierRatio = false;
+isAdjusted = false;
+isRegsiteErr = false;
+% % PPF first,ICP after
 while ~isRmseLimit
-    % ICP input pcd, output pcd
-    % disp('ICP...');
-    [pcdTemp,rmse] = ICPRegister(pcdTemp,pcdFixed,girdStepICP,maxIterations,inlierRatio);
-    isBigRmse = rmse > bigRmse;
-    disp(['Regsited. accuarcy:',num2str(rmse),'  inlierRatio:',num2str(inlierRatio)]);
-        
-    % PPF input pcd, output pcd
-    if isBigRmse
-        disp('PPF...');
-        numInPPF = numInPPF + 1;
-        pcdTemp =  PPFRegiste(pcdTemp,pcdFixed,girdStepPPF);      
+    if isFirst
+        % 全配准过程PPF只执行一次
+        disp('PPF+ICP...');
+        isFirst=false;
+        pcdTemp =  PPFRegiste(pcdTemp,pcdFixed,girdStepPPF);
+        pcdTempPPF = pcdTemp;
     end
+    
+    % ICP input pcd, output pcd
+    [pcdTemp,rmse] = ICPRegister(pcdTemp,pcdFixed,girdStepICP,maxIterations,inlierRatio);
+    rmseLog(end+1,:) = [rmse,inlierRatio];
+    isBigRmse = rmse > bigRmse;    
     
     % Registration status flag
     % Registration error:
         % 1. Too many PPF executions
         % 2. Too many parameter adjustments
         % 3. During ICP matching, "RMSE" does not decrease but increases;
-    isRegsiteErr = (numInPPF >= numInPPFMax) || (numAdjust >= numAdjustMax) || (rmse > rmseLast && ~isBigRmse);  
-    % Error correction is allowed by dynamically adjusting parameters
-    isNotGoodInlierRatioMax = (isRegsiteErr && ~isBigRmse);
-    isMinInlierRatio = round(inlierRatio*100) == round(inlierRatioMinMax(1)*100);
-    isEndRegsite = (rmse <= acceptableMaxRmse || abs(rmseLast-rmse)<0.01);
-
-    if isNotGoodInlierRatioMax
-        disp('Registration error: Adjust inlierRatinMax and retry icp');
-        rmseLast = nan;
-        numInPPF = 0;
-        numAdjust = numAdjust+1;
-        inlierRatio = inlierRatioMinMax(2) - numAdjust*inlierRatioStep;
-        pcdTemp = pcdMoving;
-    elseif isEndRegsite || isRegsiteErr
+    isEndRegsite = (rmse <= acceptableMaxRmse || isMinInlierRatio);
+    isRegsiteErr = (numAdjusteInlierRatio >= numAdjusteInlierRatioMax) && isBigRmse; 
+    if size(rmseLog,1)==3
+        isRegsiteErr = judgeRegsiteErr(rmseLog);
+    end
+    
+    if isEndRegsite || isRegsiteErr
        isRmseLimit = true;
     else
-        if ~isMinInlierRatio
+        % icp内部循环微调:目的在于修正小误差,并且根据迭代规律可以判断是否匹配成功(所需时间应该有明显的递减趋势)
+        if ~isMinInlierRatio && ~isBigRmse
             inlierRatio = inlierRatio - inlierRatioStep;
+        % PPF第一次大幅调整
+        % 如果在经过一次PPF和ICP后还是得到大误差，那么很可能该组点云存在很多距离特别大的点对
+        % 因此需要剔除更多这样的点: @@一个可能的改进方案是：剔除距离出现跳变的点对
+        % 这里30的取值与两个点云的某些信息有关：比如点云数量、一次PPF+ICP之后rmse，这里存在一个可研究、可估计的函数运算
+        % inlierRatio的计算函数的研究是PPF+ICP结合的重点,如果能在ICP前置操作中得到一个合适的inlierRatio，那么将大幅提高计算速度
+        % 但是这就意味着需要获取新的参数以替代rmse的指导作用
+        elseif ~isAdjusted && isBigRmse
+            rmseLog = [];
+            pcdTemp = pcdTempPPF;
+            inlierRatio = inlierRatio - rmse/30;
+            isAdjusted = true;
+            numAdjusteInlierRatio = numAdjusteInlierRatio+1;
+            disp(['inlierRatio第一次大幅调整:',num2str(inlierRatio)])
+        % PPF内部循环微调
+        elseif isAdjusted && isBigRmse
+            rmseLog = [];
+            numAdjusteInlierRatio = numAdjusteInlierRatio+1;
+            pcdTemp = pcdTempPPF;
+            inlierRatio = inlierRatio - inlierRatioStep;
+            disp(['inlierRatio微调:',num2str(inlierRatio)])
         end
-        rmseLast = rmse;
+        isMinInlierRatio = round(inlierRatio*100)<=round(inlierRatioStep*100);
     end
 end
 
 % out xyz
-pcdMovingRegisted = pcdTemp;
-xyzMovingRegisted = pcdMovingRegisted.Location;
+if ~isRegsiteErr
+    pcdMovingRegisted = pcdTemp;
+    xyzMovingRegisted = pcdMovingRegisted.Location;
+else
+    xyzMovingRegisted = [];
+end
 
 end
