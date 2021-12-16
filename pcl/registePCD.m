@@ -1,4 +1,4 @@
-function [xyzMovingRegisted,rmse,isRegsiteErr] = registePCD(xyzMoving,xyzFixed) 
+function [xyzMovingRegisted,isRegsiteErr] = registePCD(xyzMoving,xyzFixed) 
 % Parameter setting
 % parameter in PPF
 % Minimum sample grid size

@@ -1,4 +1,4 @@
-function [accuracy,isQualified]=computeAccuracy(pcdA,pcdB,threshold)
-    accuracy = 0.2;
+function [rmse,isQualified]=computeAccuracy(xyzA,xyzB,threshold)
+    rmse = 0.2;
     isQualified = true;
 end

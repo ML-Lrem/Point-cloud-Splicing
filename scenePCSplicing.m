@@ -3,8 +3,12 @@ clc
 tic
 
 % data type: XYZpoint
+% setting
+% Maximum error allowed to splice two scenes
+maxAcceptRmse = 0.2;
 
-% add sub function path
+
+% add function path
 addpath(genpath('.\ppf'));
 addpath(genpath('.\mex'));
 addpath(genpath('.\pcl'));
@@ -35,15 +39,17 @@ for n = 1:numPCFile-1
     xyzNextScene = getPointCloud(filePaths{n+1});
 
     % PPF + ICP (Match the current scene to the next scene)
-    [xyzNowSceneRegisted,rmse,isRegsiteErr] = registePCD(xyzNowScene,xyzNextScene);
+    [xyzNowSceneRegisted,isRegsiteErr] = registePCD(xyzNowScene,xyzNextScene);
     
-    % compute the splicing accuracy and evaluate the splicing quality @Todo
-    [accuracy,isQualified]=computeAccuracy(xyzNowSceneRegisted,xyzNextScene);
-    accuracyLog(n,:) = [accuracy,double(isQualified)];
-    
+    % compute the splicing accuracy and evaluate the splicing quality 
+    % @Todo: how to compute the rmse of two pcd which just have a part area be Regstied
+    [rmse,isQualified]=computeAccuracy(xyzNowSceneRegisted,xyzNextScene,maxAcceptRmse);
+    accuracyLog(n,:) = [rmse,double(isQualified)];
+
     % Merge point cloud (Delete coincident point clouds)
     if ~isRegsiteErr && isQualified 
-        xyzNowScene = mergePointCloud(xyzNextScene,xyzNowSceneRegisted);
+        % @ToDo
+        xyzNowScene = mergeTwoPCD(xyzNextScene,xyzNowSceneRegisted);
     elseif isRegsiteErr
         disp(['Registration failed, discard the -No',num2str(n+1),'- scene']);
     else
@@ -56,5 +62,5 @@ end
 xyzOut = xyzNowScene;
 save 'outXYZ.txt' -ascii xyzOut;
 disp('Save done')
-disp(['accuracy:',num2str(accuracy)])
+disp(['accuracy:',num2str(rmse)])
 toc;
